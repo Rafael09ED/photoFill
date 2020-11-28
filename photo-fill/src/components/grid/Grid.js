@@ -1,8 +1,7 @@
 import React from 'react';
 import './Grid.css';
 
-function Grid({children}) {
-    const maxWidth = 1000;
+function Grid({children, maxWidth}) {
     const tempChildren = [];
     
     let curX = 0;
@@ -13,27 +12,27 @@ function Grid({children}) {
         let element = children[i];
         let width = element.props.style.width;
         let height = element.props.style.height;
+        
+        if (curX + width > maxWidth) {
+            curX = 0;
+            curY = nextY;
+        }
+
         let newStyle = { ...element.props.style,
             position: 'absolute',
             top: curY,
             left: curX
         }
 
-
         tempChildren.push(
             React.cloneElement(element, {style:newStyle})
         );
 
-        nextY = Math.max(nextY, curY + height)
         curX += width;
-        if (curX > maxWidth) {
-            curX = 0;
-            curY = nextY;
-        }
+        nextY = Math.max(nextY, curY + height)
     }
   return (
     <div className="Grid">
-        <p>Hello</p>
         {tempChildren}
     </div>
   );

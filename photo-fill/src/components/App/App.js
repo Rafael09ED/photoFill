@@ -21,7 +21,7 @@ function App() {
   }
   return (
     <div className="App">
-      <Grid>{elements}</Grid>
+      <Grid maxWidth={window.innerWidth}>{elements}</Grid>
     </div>
   );
 }
