@@ -1,0 +1,9 @@
+{
+  "name": "photo-fill",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "konva": "^7.2.0"
+  },
+  "scripts": {}
+}

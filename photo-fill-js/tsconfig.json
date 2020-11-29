@@ -9,5 +9,6 @@
             "dom"
         ],
         "strict": true,
-    }
+    },
+    "compileOnSave": true,
 }
