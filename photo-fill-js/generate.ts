@@ -1,18 +1,49 @@
-var width = window.innerWidth;
-var height = window.innerHeight;
+import Konva from 'konva';
+import Knova from 'konva';
 
+const width = window.innerWidth;
+const height = window.innerHeight;
+
+interface RectProps{
+    height: number,
+    width: number
+}
+
+interface Point {
+    x: number,
+    y: number
+}
+
+interface SquareCornerDirection {
+    NE: boolean,
+    SE: boolean,
+    SW: boolean,
+    NW: boolean
+}
+
+interface CardinalDirection {
+    N: boolean,
+    E: boolean,
+    S: boolean,
+    w: boolean
+}
+
+interface PerimeterPoint extends Point {
+    internalDir: SquareCornerDirection
+}
 /* 
  * Each point contains x, y, and insideDir
  *      internalDir stores NE, SE, SW, NW as booleans 
  */
-var perimeterPoints = [];
+
+var perimeterPoints: PerimeterPoint[] = [];
 
 
-function randColor(){
+function randColor(): string {
     return `hsl(${Math.floor(Math.random() * 360)},${50 + Math.floor(Math.random() * 50)}%,${25 + Math.floor(Math.random() * 50)}%)`
 }
 
-function genRectData(){
+function genRectData(): RectProps {
     var scaleDown = 3;
     var minSize = 200;
     var maxSize = 1920 - minSize;
@@ -30,7 +61,7 @@ function generateRectBatchData(){
 }
 
 
-function getPointsFromRectangle(x, y, width, height){
+function getPointsFromRectangle(x: number, y: number, width: number, height: number): PerimeterPoint[]{
     return [
         {x, y, internalDir: {NE: false, SE: true, SW: false, NW:false}},
         {x: x + width, y, internalDir: {NE: false, SE: false, SW: true, NW:false}},
@@ -39,13 +70,13 @@ function getPointsFromRectangle(x, y, width, height){
     ]; 
 }
 
-function addRectToPerimter(x, y, width, height){
+function addRectToPerimter(x: number, y: number, width: number, height: number){
     // TODO: Remove overlaping lines (maybe I can get away with just removing overlapping points)
     perimeterPoints.push(...getPointsFromRectangle(x, y, width, height));
 }
 
-function createFirst(data){
-    var rect =  new Konva.Rect({
+function createFirst(data: RectProps) : Knova.Rect {
+    var rect = new Konva.Rect({
         x: stage.width() / 2 - data.width / 2,
         y: stage.height() / 2 - data.height /2,
         height: data.height,
@@ -60,12 +91,8 @@ function createFirst(data){
 
 
 
-function dist(v, w) { 
-    var a = v.x - w.x;
-    var b = v.y - w.y;
-
-    var c = Math.sqrt( a*a + b*b );
-    return c;
+function dist(a: Point, b: Point) : number { 
+    return Math.sqrt( Math.pow( a.x - b.x,2) + Math.pow(a.y - b.y, 2) );
  }
 
 /* 
@@ -73,7 +100,7 @@ function dist(v, w) {
  * point: {x,y} point to search for next 
  * Returns points and direction for next rectangle to place
  */
-function findPlaceForNextRect(point){
+function findPlaceForNextRect(point : Point){
     // TODO: real Algo
     // find points
     var closest = {
@@ -84,10 +111,10 @@ function findPlaceForNextRect(point){
     };
     var a = perimeterPoints[1];
     for(var i = 2; i <= perimeterPoints.length; i++){
-        console.log("a,b",a, b);
         var b = perimeterPoints[i % perimeterPoints.length];
+        console.log("a,b", a, b);
         var distance = dist(a, point) + dist(b, point); 
-        if (distance < closest.length){
+        if (distance < closest.distance){
             closest.a = a;
             closest.b = b;
             closest.distance = distance;
@@ -119,15 +146,13 @@ function findPlaceForNextRect(point){
 
 }
 
-function addRect(rectProps){
+function addRect(nextRectToAdd: RectProps){
     //pick place to add
         // what will it return? 
             // the 4 corner points?
             // the corner points it needs to fit and direction
                 // I like this one the most
     var points = findPlaceForNextRect({x:2000,y:2000});
-
-    var nextRectToAdd = batch.shift();
     // determine needed size
     console.log(points);
     if(points.perimeterPoints.length == 2) {
@@ -169,7 +194,7 @@ function addRect(rectProps){
     
 }
 
-function drawPerimeterPoint(point){
+function drawPerimeterPoint(point: PerimeterPoint){
     const x = point.x;
     const y = point.y;
     var pointObj = new Konva.Circle({
@@ -235,7 +260,7 @@ function drawPerimeterPoint(point){
     }
 }
 
-function drawPerimeterPoints(points){
+function drawPerimeterPoints(points: PerimeterPoint[]){
     points.forEach(drawPerimeterPoint);
 }
 
@@ -249,8 +274,8 @@ var stage = new Konva.Stage({
 
 var batch = generateRectBatchData();
 
-var first = createFirst(batch.shift());
+var first = createFirst(batch.shift()!);
 layer.add(first);
-addRect();
+addRect(batch.shift()!);
 drawPerimeterPoints(perimeterPoints);
 stage.add(layer);
