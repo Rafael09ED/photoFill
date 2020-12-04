@@ -1,5 +1,4 @@
 import Konva from 'konva';
-import Knova from 'konva';
 
 const width = window.innerWidth;
 const height = window.innerHeight;
@@ -75,7 +74,7 @@ function addRectToPerimter(x: number, y: number, width: number, height: number){
     perimeterPoints.push(...getPointsFromRectangle(x, y, width, height));
 }
 
-function createFirst(data: RectProps) : Knova.Rect {
+function createFirst(data: RectProps) : Konva.Rect {
     var rect = new Konva.Rect({
         x: stage.width() / 2 - data.width / 2,
         y: stage.height() / 2 - data.height /2,

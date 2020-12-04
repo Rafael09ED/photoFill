@@ -7,6 +7,11 @@
       "sourceMap": true,
       "jsx": "react",
       "allowJs": true,
-      "strict": true
+      "strict": true,
+      "lib": [
+        "es6",
+        "dom"
+        ],
+        "moduleResolution": "node"
     }
 }
