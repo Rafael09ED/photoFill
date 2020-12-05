@@ -21,11 +21,11 @@ interface SquareCornerDirection {
     NW: boolean
 }
 
-interface CardinalDirection {
-    N: boolean,
-    E: boolean,
-    S: boolean,
-    W: boolean
+enum CardinalDirection {
+    NORTH,
+    EAST,
+    SOUTH,
+    WEST
 }
 
 enum RelativeDirection {
@@ -240,13 +240,24 @@ function dirOfNextPoint(previous: Point, current: Point, next: Point) : Relative
     let  degrees = toDegrees(calculateAngle(previous, current, next));
     if (degrees < 0)
         degrees += 360; 
-    console.log(previous, current, next, degrees);
     if (degrees < 90 - 45) return RelativeDirection.Back;
     if (degrees < 180 - 45) return RelativeDirection.Left;
     if (degrees < 270 - 45) return RelativeDirection.Forward;
     if (degrees < 360 - 45) return RelativeDirection.Right;
     return RelativeDirection.Back;
+}
 
+function getOutsideDirectionOfLine(a: PerimeterPoint, b: PerimeterPoint) : CardinalDirection {
+    
+    if (a.y == b.y && !((a.internalDir.NW && b.internalDir.NE) || (b.internalDir.NW && a.internalDir.NE)))
+        return CardinalDirection.NORTH;
+    if (a.x == b.x && !((a.internalDir.NE && b.internalDir.SE) || (b.internalDir.NE && a.internalDir.SE)))
+        return CardinalDirection.EAST;
+    if(a.y == b.y && !((a.internalDir.SW && b.internalDir.SE) || (b.internalDir.SW && a.internalDir.SE)))
+        return CardinalDirection.SOUTH;
+    if(a.x == b.x && !((a.internalDir.NW && b.internalDir.SW) || (b.internalDir.NW && a.internalDir.SW)))
+        return CardinalDirection.WEST
+    throw new Error("Cardinal Direction of line not found");
 }
 
 function findNextConcaveArea() : Point[] {
@@ -304,7 +315,7 @@ function getIndexOfPoint(p: Point) : number{
     return -1;
 }
 
-function findPlaceForNextRect(point : Point): InsertionPointResult {
+function findPlaceForNextRect(point : Point): PerimeterPoint[] {
     // TODO: real Algo
 
     const nextConcaveArea = findNextConcaveArea();
@@ -344,18 +355,7 @@ function findPlaceForNextRect(point : Point): InsertionPointResult {
 
     }
 
-    // find direction?
-    let direction = {
-        N: closest.a.y == closest.b.y && !((closest.a.internalDir.NW && closest.b.internalDir.NE) || (closest.b.internalDir.NW && closest.a.internalDir.NE)), 
-        E: closest.a.x == closest.b.x && !((closest.a.internalDir.NE && closest.b.internalDir.SE) || (closest.b.internalDir.NE && closest.a.internalDir.SE)), 
-        S: closest.a.y == closest.b.y && !((closest.a.internalDir.SW && closest.b.internalDir.SE) || (closest.b.internalDir.SW && closest.a.internalDir.SE)), 
-        W: closest.a.x == closest.b.x && !((closest.a.internalDir.NW && closest.b.internalDir.SW) || (closest.b.internalDir.NW && closest.a.internalDir.SW))
-    } // only works for 2
-    return {
-        perimeterPoints: [closest.a, closest.b],
-        direction,
-        index: closest.index
-    };
+    return [closest.a, closest.b];
 
 }
 function pickRandomPointOnLine(points: Point[]): Point {
@@ -366,6 +366,7 @@ function pickRandomPointOnLine(points: Point[]): Point {
         y: Math.floor(points[0].y + y_size * Math.random()),
     }
 }
+
 
 function addRect(nextRectToAdd: RectProps){
     //pick place to add
@@ -378,56 +379,65 @@ function addRect(nextRectToAdd: RectProps){
     let points = findPlaceForNextRect(addPoint);
     // determine needed size
 
-    if(points.perimeterPoints.length == 2) {
-        const startPointOnLine = pickRandomPointOnLine(points.perimeterPoints);
-        if (points.direction.N){
-            let rect = new Konva.Rect({
-                x: startPointOnLine.x ,
-                y: startPointOnLine.y - nextRectToAdd.height,
-                height: nextRectToAdd.height,
-                width: nextRectToAdd.width,
-                fill: randColor(),
-                stroke: 'black',
-                strokeWidth: 1,
-            });
-            addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), points.index + 1, 3);
-            layer.add(rect);
-        } else if (points.direction.E) {
-            let rect = new Konva.Rect({
-                x: startPointOnLine.x ,
-                y: startPointOnLine.y ,
-                height: nextRectToAdd.height,
-                width: nextRectToAdd.width,
-                fill: randColor(),
-                stroke: 'black',
-                strokeWidth: 1,
-            });
-            addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), points.index + 1, 0);
-            layer.add(rect);
-        } else if (points.direction.S) {
-            let rect = new Konva.Rect({
-                x: startPointOnLine.x - nextRectToAdd.width,
-                y: startPointOnLine.y ,
-                height: nextRectToAdd.height,
-                width: nextRectToAdd.width,
-                fill: randColor(),
-                stroke: 'black',
-                strokeWidth: 1,
-            });
-            addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), points.index + 1, 1);
-            layer.add(rect);
-        } else if (points.direction.W){ 
-            let rect = new Konva.Rect({
-                x: startPointOnLine.x - nextRectToAdd.width,
-                y: startPointOnLine.y - nextRectToAdd.height,
-                height: nextRectToAdd.height,
-                width: nextRectToAdd.width,
-                fill: randColor(),
-                stroke: 'black',
-                strokeWidth: 1,
-            });
-            addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), points.index + 1, 2);
-            layer.add(rect);
+    if(points.length == 2) {
+        const startPointOnLine = pickRandomPointOnLine(points);
+        const dir = getOutsideDirectionOfLine(points[0], points[1]);
+        const index = getIndexOfPoint(points[0]);
+        switch(dir){
+            case CardinalDirection.NORTH:{
+                let rect = new Konva.Rect({
+                    x: startPointOnLine.x ,
+                    y: startPointOnLine.y - nextRectToAdd.height,
+                    height: nextRectToAdd.height,
+                    width: nextRectToAdd.width,
+                    fill: randColor(),
+                    stroke: 'black',
+                    strokeWidth: 1,
+                });
+                addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), index + 1, 3);
+                layer.add(rect);
+            }   break;
+                
+            case CardinalDirection.EAST:{
+                let rect = new Konva.Rect({
+                    x: startPointOnLine.x ,
+                    y: startPointOnLine.y ,
+                    height: nextRectToAdd.height,
+                    width: nextRectToAdd.width,
+                    fill: randColor(),
+                    stroke: 'black',
+                    strokeWidth: 1,
+                });
+                addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), index + 1, 0);
+                layer.add(rect);
+            }   break;
+                
+            case CardinalDirection.SOUTH: {
+                let rect = new Konva.Rect({
+                    x: startPointOnLine.x - nextRectToAdd.width,
+                    y: startPointOnLine.y ,
+                    height: nextRectToAdd.height,
+                    width: nextRectToAdd.width,
+                    fill: randColor(),
+                    stroke: 'black',
+                    strokeWidth: 1,
+                });
+                addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), index + 1, 1);
+                layer.add(rect);
+            }   break;
+            case CardinalDirection.WEST: {
+                let rect = new Konva.Rect({
+                    x: startPointOnLine.x - nextRectToAdd.width,
+                    y: startPointOnLine.y - nextRectToAdd.height,
+                    height: nextRectToAdd.height,
+                    width: nextRectToAdd.width,
+                    fill: randColor(),
+                    stroke: 'black',
+                    strokeWidth: 1,
+                });
+                addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), index + 1, 2);
+                layer.add(rect);
+            }   break;
         }
     }
     // create object
