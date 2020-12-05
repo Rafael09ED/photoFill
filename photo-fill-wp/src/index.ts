@@ -1,5 +1,4 @@
 import Konva from 'konva';
-import { add } from 'lodash';
 
 const canvas_width = window.innerWidth;
 const canvas_height = window.innerHeight;
@@ -108,11 +107,11 @@ function onSameLine(a: Point, b:Point, c:Point) : boolean { // HORIZONTAL OR VER
     return (a.x == b.x && b.x == c.x) || (a.y == b.y && b.y == c.y);
 }
 
-function spliceCircular<T>(arr:T[], start: number, remove: number): T[] {
+function spliceCircular<T>(arr:T[], start: number, remove: number, toInsert: T[] = []): T[] {
     if (arr.length > start + remove){
-        return [...arr.slice(0, start), ...arr.slice(start + remove, arr.length)];
+        return [...arr.slice(0, start), ...toInsert, ...arr.slice(start + remove, arr.length)];
     }
-    return arr.slice((start + remove) % arr.length, start);
+    return [...arr.slice((start + remove) % arr.length, start), ...toInsert];
 }
 
 function getAbsoluteAngle(a: Point, b:Point) : number{
@@ -161,13 +160,13 @@ function addPointsToPerimeter(points: PerimeterPoint[], pointToAddAfter: Point[]
     const index = getIndexOfPoint(pointToAddAfter[0]);
     if (pointToAddAfter.length == 2) {
         console.log("two");
-        perimeterPoints.splice(circularIndex(index + 1, perimeterPoints.length), 0, ...points);
+        perimeterPoints = spliceCircular(perimeterPoints, circularIndex(index + 1, perimeterPoints.length), 0, points); 
     } else if (pointToAddAfter.length == 3) {
         console.log("three");
-        perimeterPoints.splice(circularIndex(index + 1, perimeterPoints.length), 1, ...points.slice(1));
+        perimeterPoints = spliceCircular(perimeterPoints, circularIndex(index + 1, perimeterPoints.length), 0, points.slice(1));
     } else if (pointToAddAfter.length == 4) {
         console.log("four");
-        perimeterPoints.splice(circularIndex(index + 1, perimeterPoints.length), 2, ...points.slice(0, 3));
+        perimeterPoints = spliceCircular(perimeterPoints, circularIndex(index + 1, perimeterPoints.length), 2, points.slice(0, 3));
     } else 
         throw new Error("Invalid number of points to insert into");
 
@@ -335,12 +334,12 @@ function findNextConcaveArea() : PerimeterPoint[] {
         const d = perimeterPoints[d_i];
 
         if (dirOfNextPoint(a, b, c) == RelativeDirection.Left && dirOfNextPoint(b, c, d) == RelativeDirection.Left){
-            let line = new Konva.Line({
-                points: [a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y],
-                stroke: 'pink',
-                strokeWidth: 10,
-            });
-            layer.add(line);
+            // let line = new Konva.Line({
+            //     points: [a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y],
+            //     stroke: 'pink',
+            //     strokeWidth: 10,
+            // });
+            // layer.add(line);
             return [a, b, c, d];
         }
     }
@@ -407,12 +406,12 @@ function findPlaceForNextRect(point : Point): PerimeterPoint[] {
         a = b;
     }
 
-    let line = new Konva.Line({
-        points: [closest.a.x, closest.a.y, closest.b.x, closest.b.y],
-        stroke: 'red',
-        strokeWidth: 15,
-    });
-    layer.add(line);
+    // let line = new Konva.Line({
+    //     points: [closest.a.x, closest.a.y, closest.b.x, closest.b.y],
+    //     stroke: 'red',
+    //     strokeWidth: 15,
+    // });
+    // layer.add(line);
 
     
     const cornerPoints = tryToGetCornerPoint(closest.a, closest.b);
@@ -467,7 +466,7 @@ function addRect(nextRectToAdd: Rectangle){
     const addPoint : Point = {x:Math.random()*canvas_width,y:Math.random() * canvas_height};
     //const addPoint : Point = {x: canvas_width / 2, y: 100};
 
-    drawPoint(addPoint, "blue", "red");
+    //drawPoint(addPoint, "blue", "red");
     const pointsForNextRect = findPlaceForNextRect(addPoint);
 
     if(pointsForNextRect.length == 2) {
@@ -656,13 +655,13 @@ let stage = new Konva.Stage({
 
 let batch = generateRectBatchData();
 
-let first = createFirst(batch.shift()!);
+
+let first = createFirst(genRectData());
 stage.add(layer);
-addRect(batch.shift()!);
-addRect(batch.shift()!);
-addRect(batch.shift()!);
-findNextConcaveArea();
+for (let i = 0; i < 2000; i++) {
+    addRect(genRectData());
+}
+
 console.log(perimeterPoints);
 drawPerimeterPoints(perimeterPoints);
-drawPoint({x:20, y:20}, "black", "pink", "(20,20)")
 
