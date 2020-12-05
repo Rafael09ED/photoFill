@@ -4,7 +4,7 @@ import { add } from 'lodash';
 const canvas_width = window.innerWidth;
 const canvas_height = window.innerHeight;
 
-interface RectProps{
+interface Rectangle {
     height: number,
     width: number
 }
@@ -22,10 +22,17 @@ interface SquareCornerDirection {
 }
 
 enum CardinalDirection {
-    NORTH,
+    NORTH = 1,
     EAST,
     SOUTH,
     WEST
+}
+
+enum CardinalCornerDirection {
+    NORTH_EAST,
+    SOUTH_EAST,
+    SOUTH_WEST,
+    NORTH_WEST
 }
 
 enum RelativeDirection {
@@ -58,7 +65,7 @@ function randColor(): string {
     return `hsl(${Math.floor(Math.random() * 360)},${50 + Math.floor(Math.random() * 50)}%,${25 + Math.floor(Math.random() * 50)}%)`
 }
 
-function genRectData(): RectProps {
+function genRectData(): Rectangle {
     let scaleDown = 3;
     let minSize = 200;
     let maxSize = Math.min(canvas_height, canvas_width);
@@ -76,7 +83,9 @@ function generateRectBatchData(){
 }
 
 function rotate<T>(arr: T[], count = 1) : T[]{
-    return [...arr.slice(count, arr.length), ...arr.slice(0, count)];
+    let cappedRotateAmount = count % arr.length;
+    if (cappedRotateAmount < 0) cappedRotateAmount += arr.length;
+    return [...arr.slice(cappedRotateAmount, arr.length), ...arr.slice(0, cappedRotateAmount)];
 };
 
 /*
@@ -148,10 +157,28 @@ function calculateInternalDir(p : Point, prev: Point, next: Point) : SquareCorne
     }
 }
 
-function addRectToPerimter(x: number, y: number, width: number, height: number, indexInPerimiterList: number, rotateCount: number){
-    // TODO: Remove overlaping lines (maybe I can get away with just removing overlapping points)
-    console.assert(perimeterPoints.length > 0, "Perimeter has no points!");
-    perimeterPoints.splice(indexInPerimiterList, 0, ...rotate(getPointsFromRectangle(x, y, width, height), rotateCount));
+function circularIndex(index: number, length: number): number{
+    index = index % perimeterPoints.length;
+    return (index > 0) ? index : index + perimeterPoints.length;
+}
+``
+function addPointsToPerimeter(points: PerimeterPoint[], pointToAddAfter: Point[]){
+    if(perimeterPoints.length == 0 || points.length == 0)
+        throw new Error("Perimeter has no points!");
+
+
+    console.log(perimeterPoints, pointToAddAfter);
+    const index = getIndexOfPoint(pointToAddAfter[0]);
+    if (pointToAddAfter.length == 2) {
+        console.log("two");
+        perimeterPoints.splice(circularIndex(index + 1, perimeterPoints.length), 0, ...points);
+    } else if (pointToAddAfter.length == 3) {
+        console.log("three");
+        perimeterPoints.splice(circularIndex(index + 1, perimeterPoints.length), 1, ...points.slice(1));
+    } else 
+        console.log("other");
+
+
     for (let i = 0; i < perimeterPoints.length; i++) {
         const a = perimeterPoints[i];
         const b_i = (i + 1) % perimeterPoints.length;
@@ -171,6 +198,9 @@ function addRectToPerimter(x: number, y: number, width: number, height: number, 
                 continue;
             }
             perimeterPoints = spliceCircular(perimeterPoints, b_i, 2);
+        } 
+        if (dirOfNextPoint(a, b, c) == RelativeDirection.Back){
+            perimeterPoints.splice(b_i, 1);
         }
     }
     for (let i = 0; i < perimeterPoints.length; i++) {
@@ -184,18 +214,61 @@ function addRectToPerimter(x: number, y: number, width: number, height: number, 
     }
 }
 
-function createFirst(data: RectProps) : Konva.Rect {
-    const x = Math.floor(stage.width() / 2 - data.width / 2);
-    const y = Math.floor(stage.height() / 2 - data.height /2);
+function createRectangle(point: Point, size: Rectangle, pointRefersTo: CardinalCornerDirection) : [Konva.Rect, PerimeterPoint[]] {
+    let topLeft : Point;
+    switch (pointRefersTo) {
+        case CardinalCornerDirection.NORTH_WEST:
+            topLeft = point;
+            break;
+        case CardinalCornerDirection.NORTH_EAST:
+            topLeft = {x: point.x - size.width, y: point.y} ;
+            break;
+        case CardinalCornerDirection.SOUTH_WEST:
+            topLeft = {x: point.x, y: point.y - size.height};
+            break;
+        case CardinalCornerDirection.SOUTH_EAST:
+            topLeft = {x: point.x - size.width, y: point.y - size.height}
+            break;
+        default: throw new Error("Unimplemented");
+    }
     let rect = new Konva.Rect({
-        x,
-        y,
-        height: data.height,
-        width: data.width,
+        x: topLeft.x,
+        y: topLeft.y,
+        height: size.height,
+        width: size.width,
         fill: randColor(),
         stroke: 'black',
         strokeWidth: 1,
     });
+    layer.add(rect);
+    let corners = getPointsFromRectangle(rect.x(), rect.y(), rect.width(), rect.height());
+    switch (pointRefersTo) {
+        case CardinalCornerDirection.NORTH_WEST:
+            console.log("NW");
+            corners = rotate(corners, 0);
+            break;
+        case CardinalCornerDirection.SOUTH_WEST:
+            console.log("SW");
+            corners = rotate(corners, 3);
+            break;
+        case CardinalCornerDirection.SOUTH_EAST:
+            console.log("SE");
+            corners = rotate(corners, 2);
+            break;
+        case CardinalCornerDirection.NORTH_EAST:
+            console.log("NE");
+            corners = rotate(corners, 1);
+            break;
+        default: throw new Error("Unimplemented");    
+    }
+    //drawPoint(corners[2], "green", "yellow", ` ${corners[2].x} ${corners[2].y} `);
+    return [rect, corners];
+}
+
+function createFirst(data: Rectangle) : Konva.Rect {
+    const x = Math.floor(stage.width() / 2 - data.width / 2);
+    const y = Math.floor(stage.height() / 2 - data.height /2);
+    const [rect, points] = createRectangle({x,y}, data, CardinalCornerDirection.NORTH_WEST)
     //addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), 0, 0);
     perimeterPoints = getPointsFromRectangle(rect.x(), rect.y(), rect.width(), rect.height());
     return rect;
@@ -270,7 +343,6 @@ function findNextConcaveArea() : Point[] {
         const d_i = (i + 3) % perimeterPoints.length;
         const d = perimeterPoints[d_i];
 
-        console.log("i", i, dirOfNextPoint(a, b, c), dirOfNextPoint(b, c, d));
         if (dirOfNextPoint(a, b, c) == RelativeDirection.Left && dirOfNextPoint(b, c, d) == RelativeDirection.Left){
             let line = new Konva.Line({
                 points: [a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y],
@@ -284,7 +356,7 @@ function findNextConcaveArea() : Point[] {
     return [];
 }
 
-function tryToGetCornerPoint(first: Point, second: Point) : Point []{
+function tryToGetCornerPoint(first: Point, second: Point) : PerimeterPoint []{
     for (let i = 0; i < perimeterPoints.length; i++) {
         const a = perimeterPoints[i];
         const b_i = (i + 1) % perimeterPoints.length;
@@ -312,7 +384,8 @@ function getIndexOfPoint(p: Point) : number{
         if (arePointsEqual(a, p))
             return i;
     }
-    return -1;
+    throw new Error("Point Not Found");
+    
 }
 
 function findPlaceForNextRect(point : Point): PerimeterPoint[] {
@@ -350,9 +423,10 @@ function findPlaceForNextRect(point : Point): PerimeterPoint[] {
     });
     layer.add(line);
 
+    
     const cornerPoints = tryToGetCornerPoint(closest.a, closest.b);
-    if (cornerPoints.length != 0) {
-
+    if (cornerPoints.length != 0)  {
+        return cornerPoints;
     }
 
     return [closest.a, closest.b];
@@ -368,76 +442,66 @@ function pickRandomPointOnLine(points: Point[]): Point {
 }
 
 
-function addRect(nextRectToAdd: RectProps){
+function addRect(nextRectToAdd: Rectangle){
     //pick place to add
         // what will it return? 
             // the 4 corner points?
             // the corner points it needs to fit and direction
                 // I like this one the most
     const addPoint : Point = {x:Math.random()*canvas_width,y:Math.random() * canvas_height};
+    //const addPoint : Point = {x: canvas_width / 2, y: 100};
+
     drawPoint(addPoint, "blue", "red");
-    let points = findPlaceForNextRect(addPoint);
+    const pointsForNextRect = findPlaceForNextRect(addPoint);
+    console.log("points", pointsForNextRect);
     // determine needed size
 
-    if(points.length == 2) {
-        const startPointOnLine = pickRandomPointOnLine(points);
-        const dir = getOutsideDirectionOfLine(points[0], points[1]);
-        const index = getIndexOfPoint(points[0]);
+    if(pointsForNextRect.length == 2) {
+        const startPointOnLine = pickRandomPointOnLine(pointsForNextRect);
+        const dir = getOutsideDirectionOfLine(pointsForNextRect[0], pointsForNextRect[1]);
+        const index = getIndexOfPoint(pointsForNextRect[0]);
+        let gui_element : Konva.Rect | null = null;
+        let rectPoints: PerimeterPoint[] = [];
         switch(dir){
             case CardinalDirection.NORTH:{
-                let rect = new Konva.Rect({
-                    x: startPointOnLine.x ,
-                    y: startPointOnLine.y - nextRectToAdd.height,
-                    height: nextRectToAdd.height,
-                    width: nextRectToAdd.width,
-                    fill: randColor(),
-                    stroke: 'black',
-                    strokeWidth: 1,
-                });
-                addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), index + 1, 3);
-                layer.add(rect);
+                [gui_element, rectPoints] = createRectangle(startPointOnLine, nextRectToAdd, CardinalCornerDirection.SOUTH_WEST);
             }   break;
-                
-            case CardinalDirection.EAST:{
-                let rect = new Konva.Rect({
-                    x: startPointOnLine.x ,
-                    y: startPointOnLine.y ,
-                    height: nextRectToAdd.height,
-                    width: nextRectToAdd.width,
-                    fill: randColor(),
-                    stroke: 'black',
-                    strokeWidth: 1,
-                });
-                addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), index + 1, 0);
-                layer.add(rect);
+            case CardinalDirection.EAST: {
+                [gui_element, rectPoints] = createRectangle(startPointOnLine, nextRectToAdd, CardinalCornerDirection.NORTH_WEST);
             }   break;
-                
             case CardinalDirection.SOUTH: {
-                let rect = new Konva.Rect({
-                    x: startPointOnLine.x - nextRectToAdd.width,
-                    y: startPointOnLine.y ,
-                    height: nextRectToAdd.height,
-                    width: nextRectToAdd.width,
-                    fill: randColor(),
-                    stroke: 'black',
-                    strokeWidth: 1,
-                });
-                addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), index + 1, 1);
-                layer.add(rect);
+                [gui_element, rectPoints] = createRectangle(startPointOnLine, nextRectToAdd, CardinalCornerDirection.NORTH_EAST);
             }   break;
             case CardinalDirection.WEST: {
-                let rect = new Konva.Rect({
-                    x: startPointOnLine.x - nextRectToAdd.width,
-                    y: startPointOnLine.y - nextRectToAdd.height,
-                    height: nextRectToAdd.height,
-                    width: nextRectToAdd.width,
-                    fill: randColor(),
-                    stroke: 'black',
-                    strokeWidth: 1,
-                });
-                addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), index + 1, 2);
-                layer.add(rect);
+                [gui_element, rectPoints] = createRectangle(startPointOnLine, nextRectToAdd, CardinalCornerDirection.SOUTH_EAST);
             }   break;
+        }
+        if (gui_element != null) {
+            addPointsToPerimeter(rectPoints, pointsForNextRect);
+            layer.add(gui_element);
+        }
+    } else if (pointsForNextRect.length == 3) {
+        const pointToStartAt = pointsForNextRect[1];
+        const firstWallDir = getOutsideDirectionOfLine(pointsForNextRect[0], pointsForNextRect[1]);
+        let gui_element : Konva.Rect | null = null;
+        let rectPoints: PerimeterPoint[] = [];
+        switch(firstWallDir){
+            case CardinalDirection.NORTH:{
+                [gui_element, rectPoints] = createRectangle(pointToStartAt, nextRectToAdd, CardinalCornerDirection.SOUTH_EAST);
+            }   break;
+            case CardinalDirection.EAST: {
+                [gui_element, rectPoints] = createRectangle(pointToStartAt, nextRectToAdd, CardinalCornerDirection.SOUTH_WEST);
+            }   break;
+            case CardinalDirection.SOUTH: {
+                [gui_element, rectPoints] = createRectangle(pointToStartAt, nextRectToAdd, CardinalCornerDirection.NORTH_WEST);
+            }   break;
+            case CardinalDirection.WEST: {
+                [gui_element, rectPoints] = createRectangle(pointToStartAt, nextRectToAdd, CardinalCornerDirection.NORTH_EAST);
+            }   break;
+        }
+        if (gui_element != null) {
+            addPointsToPerimeter(rectPoints, pointsForNextRect);
+            layer.add(gui_element);
         }
     }
     // create object
@@ -469,7 +533,7 @@ function drawPoint(point: Point, fill: string, stroke: string, label?:string) {
           });
           layer.add(text);
     }
-  
+    layer.draw();
 }
 
 
@@ -540,6 +604,7 @@ function drawPerimeterPoints(points: PerimeterPoint[]){
         let cur = points[i];
         drawPerimeterPoint(cur, i + "");
     }
+    layer.draw();
 }
 
 let layer = new Konva.Layer();
@@ -553,10 +618,12 @@ let stage = new Konva.Stage({
 let batch = generateRectBatchData();
 
 let first = createFirst(batch.shift()!);
-layer.add(first);
+stage.add(layer);
 addRect(batch.shift()!);
 addRect(batch.shift()!);
 findNextConcaveArea();
 console.log(perimeterPoints);
 drawPerimeterPoints(perimeterPoints);
-stage.add(layer);
+//console.log(createRectangle({x:20, y:20}, batch.shift()!, CardinalCornerDirection.SOUTH_WEST));
+drawPoint({x:20, y:20}, "black", "pink", "(20,20)")
+
