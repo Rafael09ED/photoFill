@@ -39,6 +39,13 @@ enum RelativeDirection {
 interface PerimeterPoint extends Point {
     internalDir: SquareCornerDirection
 }
+
+
+interface InsertionPointResult {
+    perimeterPoints: PerimeterPoint[], 
+    direction: CardinalDirection,
+    index: number 
+}
 /* 
  * Each point contains x, y, and insideDir
  *      internalDir stores NE, SE, SW, NW as booleans 
@@ -105,14 +112,12 @@ function spliceCircular<T>(arr:T[], start: number, remove: number): T[] {
     if (arr.length > start + remove){
         return [...arr.slice(0, start), ...arr.slice(start + remove, arr.length)];
     }
-    console.log("vals", start, remove, arr.length,  (start + remove) % arr.length)
     return arr.slice((start + remove) % arr.length, start);
 }
 
 function getAbsoluteAngle(a: Point, b:Point) : number{
     const relPoint : Point = {x: b.x - a.x, y: b.y - a.y};
     const degree = toDegrees(Math.atan2(-relPoint.y, relPoint.x)); // neg y because of inverted y axis
-    console.log("a", a, "b", b, relPoint, degree);
     return (degree < 0) ? degree + 360 : degree;
 }
 
@@ -131,7 +136,6 @@ function isAngleToRightOfPoints(a: Point, b: Point, c:Point, angle: number): boo
 
     const answer = ba_angle <= angle && angle <= bc_angle
 
-    console.log("angle", a, b, c, ba_angle, bc_angle, angle, answer);
     return answer;
 }
 
@@ -147,7 +151,6 @@ function calculateInternalDir(p : Point, prev: Point, next: Point) : SquareCorne
 function addRectToPerimter(x: number, y: number, width: number, height: number, indexInPerimiterList: number, rotateCount: number){
     // TODO: Remove overlaping lines (maybe I can get away with just removing overlapping points)
     console.assert(perimeterPoints.length > 0, "Perimeter has no points!");
-    console.log(perimeterPoints);
     perimeterPoints.splice(indexInPerimiterList, 0, ...rotate(getPointsFromRectangle(x, y, width, height), rotateCount));
     for (let i = 0; i < perimeterPoints.length; i++) {
         const a = perimeterPoints[i];
@@ -176,7 +179,6 @@ function addRectToPerimter(x: number, y: number, width: number, height: number, 
         const b = perimeterPoints[b_i];
         const c_i = (i + 2) % perimeterPoints.length;
         const c = perimeterPoints[c_i];
-        console.log("index", b_i);
         b.internalDir = calculateInternalDir(b, a, c);
         
     }
@@ -224,8 +226,8 @@ function calculateAngle(p1: Point, center: Point, p2: Point) { // Radians
 	const transformedP1 : Point = {x: p1.x - center.x, y: p1.y - center.y};
 	const transformedP2 : Point = {x: p2.x - center.x, y: p2.y - center.y};
 
-	const angleToP1 = Math.atan2(transformedP1.y, transformedP1.x);
-	const angleToP2 = Math.atan2(transformedP2.y, transformedP2.x);
+	const angleToP1 = Math.atan2(-transformedP1.y, transformedP1.x);
+	const angleToP2 = Math.atan2(-transformedP2.y, transformedP2.x);
 
 	return angleToP1 - angleToP2
 }
@@ -235,7 +237,10 @@ function toDegrees(radians: number) {
 }
 
 function dirOfNextPoint(previous: Point, current: Point, next: Point) : RelativeDirection {
-    const degrees = toDegrees(calculateAngle(previous, current, next));
+    let  degrees = toDegrees(calculateAngle(previous, current, next));
+    if (degrees < 0)
+        degrees += 360; 
+    console.log(previous, current, next, degrees);
     if (degrees < 90 - 45) return RelativeDirection.Back;
     if (degrees < 180 - 45) return RelativeDirection.Left;
     if (degrees < 270 - 45) return RelativeDirection.Forward;
@@ -244,11 +249,69 @@ function dirOfNextPoint(previous: Point, current: Point, next: Point) : Relative
 
 }
 
-function findPlaceForNextRect(point : Point): {
-        perimeterPoints: PerimeterPoint[], 
-        direction: CardinalDirection,
-        index: number }{
+function findNextConcaveArea() : Point[] {
+    for (let i = 0; i < perimeterPoints.length; i++) {
+        const a = perimeterPoints[i];
+        const b_i = (i + 1) % perimeterPoints.length;
+        const b = perimeterPoints[b_i];
+        const c_i = (i + 2) % perimeterPoints.length;
+        const c = perimeterPoints[c_i];
+        const d_i = (i + 3) % perimeterPoints.length;
+        const d = perimeterPoints[d_i];
+
+        console.log("i", i, dirOfNextPoint(a, b, c), dirOfNextPoint(b, c, d));
+        if (dirOfNextPoint(a, b, c) == RelativeDirection.Left && dirOfNextPoint(b, c, d) == RelativeDirection.Left){
+            let line = new Konva.Line({
+                points: [a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y],
+                stroke: 'pink',
+                strokeWidth: 10,
+            });
+            layer.add(line);
+            return [a, b, c, d];
+        }
+    }
+    return [];
+}
+
+function tryToGetCornerPoint(first: Point, second: Point) : Point []{
+    for (let i = 0; i < perimeterPoints.length; i++) {
+        const a = perimeterPoints[i];
+        const b_i = (i + 1) % perimeterPoints.length;
+        const b = perimeterPoints[b_i];
+        const c_i = (i + 2) % perimeterPoints.length;
+        const c = perimeterPoints[c_i];
+        const d_i = (i + 3) % perimeterPoints.length;
+        const d = perimeterPoints[d_i];
+
+        if(!arePointsEqual(first, b))
+            continue;
+        
+        if(dirOfNextPoint(a, b, c) == RelativeDirection.Left)
+            return [a,b,c];
+        else if (dirOfNextPoint(b, c, d) == RelativeDirection.Left)
+            return [b, c, d];
+        return [];
+    }
+    return [];
+}
+
+function getIndexOfPoint(p: Point) : number{
+    for (let i = 0; i < perimeterPoints.length; i++) {
+        const a = perimeterPoints[i];
+        if (arePointsEqual(a, p))
+            return i;
+    }
+    return -1;
+}
+
+function findPlaceForNextRect(point : Point): InsertionPointResult {
     // TODO: real Algo
+
+    const nextConcaveArea = findNextConcaveArea();
+    if (nextConcaveArea.length != 0){
+        // TODO: return
+    }
+    
     // find points
     let closest = {
         a: perimeterPoints[0], 
@@ -276,6 +339,10 @@ function findPlaceForNextRect(point : Point): {
     });
     layer.add(line);
 
+    const cornerPoints = tryToGetCornerPoint(closest.a, closest.b);
+    if (cornerPoints.length != 0) {
+
+    }
 
     // find direction?
     let direction = {
@@ -479,6 +546,7 @@ let first = createFirst(batch.shift()!);
 layer.add(first);
 addRect(batch.shift()!);
 addRect(batch.shift()!);
+findNextConcaveArea();
 console.log(perimeterPoints);
 drawPerimeterPoints(perimeterPoints);
 stage.add(layer);
