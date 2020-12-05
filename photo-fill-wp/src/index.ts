@@ -42,22 +42,13 @@ enum RelativeDirection {
     Back
 }
 
-
 interface PerimeterPoint extends Point {
     internalDir: SquareCornerDirection
 }
 
-
-interface InsertionPointResult {
-    perimeterPoints: PerimeterPoint[], 
-    direction: CardinalDirection,
-    index: number 
-}
 /* 
- * Each point contains x, y, and insideDir
- *      internalDir stores NE, SE, SW, NW as booleans 
+ * perimeterPoints store PerimeterPoints clockwise around the polygon
  */
-
 let perimeterPoints: PerimeterPoint[] = [];
 
 
@@ -97,7 +88,7 @@ function getPointsFromRectangle(x: number, y: number, width: number, height: num
         {x: x + width, y, internalDir: {NE: false, SE: false, SW: true, NW:false}},
         {x: x + width, y: y + height, internalDir:{NE: false, SE: false, SW: false, NW:true}},
         {x, y: y + height, internalDir: {NE: true, SE: false, SW: false, NW:false}},
-    ]; // ordering matters
+    ]; 
 }
 
 function arePointsEqual(a: Point, b:Point) : boolean {
@@ -134,7 +125,6 @@ function getAbsoluteAngle(a: Point, b:Point) : number{
  *  Unit Circle x axis is base angle
  */
 function isAngleToRightOfPoints(a: Point, b: Point, c:Point, angle: number): boolean {
-    //let clockwiseAngle = toDegrees(calculateAngle(a, b, c)); comparing relative to absolte... bad idea
     let ba_angle = getAbsoluteAngle(b,a);
     let bc_angle = getAbsoluteAngle(b,c);
 
@@ -199,6 +189,7 @@ function addPointsToPerimeter(points: PerimeterPoint[], pointToAddAfter: Point[]
             }
             perimeterPoints = spliceCircular(perimeterPoints, b_i, 2);
         } 
+        // remove backtracking points
         if (dirOfNextPoint(a, b, c) == RelativeDirection.Back){
             perimeterPoints.splice(b_i, 1);
         }
@@ -261,7 +252,6 @@ function createRectangle(point: Point, size: Rectangle, pointRefersTo: CardinalC
             break;
         default: throw new Error("Unimplemented");    
     }
-    //drawPoint(corners[2], "green", "yellow", ` ${corners[2].x} ${corners[2].y} `);
     return [rect, corners];
 }
 
@@ -269,7 +259,6 @@ function createFirst(data: Rectangle) : Konva.Rect {
     const x = Math.floor(stage.width() / 2 - data.width / 2);
     const y = Math.floor(stage.height() / 2 - data.height /2);
     const [rect, points] = createRectangle({x,y}, data, CardinalCornerDirection.NORTH_WEST)
-    //addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), 0, 0);
     perimeterPoints = getPointsFromRectangle(rect.x(), rect.y(), rect.width(), rect.height());
     return rect;
 }
