@@ -183,9 +183,11 @@ function addRectToPerimter(x: number, y: number, width: number, height: number, 
 }
 
 function createFirst(data: RectProps) : Konva.Rect {
+    const x = Math.floor(stage.width() / 2 - data.width / 2);
+    const y = Math.floor(stage.height() / 2 - data.height /2);
     let rect = new Konva.Rect({
-        x: stage.width() / 2 - data.width / 2,
-        y: stage.height() / 2 - data.height /2,
+        x,
+        y,
         height: data.height,
         width: data.width,
         fill: randColor(),
@@ -245,7 +247,7 @@ function dirOfNextPoint(previous: Point, current: Point, next: Point) : Relative
 function findPlaceForNextRect(point : Point): {
         perimeterPoints: PerimeterPoint[], 
         direction: CardinalDirection,
-        index: number}{
+        index: number }{
     // TODO: real Algo
     // find points
     let closest = {
@@ -293,8 +295,8 @@ function pickRandomPointOnLine(points: Point[]): Point {
     const x_size = points[1].x - points[0].x;
     const y_size = points[1].y - points[0].y; 
     return {
-        x: points[0].x + x_size * Math.random(), 
-        y: points[0].y + y_size * Math.random(),
+        x: Math.floor(points[0].x + x_size * Math.random()), 
+        y: Math.floor(points[0].y + y_size * Math.random()),
     }
 }
 
@@ -321,7 +323,7 @@ function addRect(nextRectToAdd: RectProps){
                 stroke: 'black',
                 strokeWidth: 1,
             });
-            addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), points.index, 0);
+            addRectToPerimter(rect.x(), rect.y(), rect.width(), rect.height(), points.index + 1, 3);
             layer.add(rect);
         } else if (points.direction.E) {
             let rect = new Konva.Rect({
@@ -475,6 +477,7 @@ let batch = generateRectBatchData();
 
 let first = createFirst(batch.shift()!);
 layer.add(first);
+addRect(batch.shift()!);
 addRect(batch.shift()!);
 console.log(perimeterPoints);
 drawPerimeterPoints(perimeterPoints);
