@@ -432,18 +432,11 @@ function pickRandomPointOnLine(points: Point[]): Point {
 
 
 function addRect(nextRectToAdd: Rectangle){
-    //pick place to add
-        // what will it return? 
-            // the 4 corner points?
-            // the corner points it needs to fit and direction
-                // I like this one the most
     const addPoint : Point = {x:Math.random()*canvas_width,y:Math.random() * canvas_height};
     //const addPoint : Point = {x: canvas_width / 2, y: 100};
 
     drawPoint(addPoint, "blue", "red");
     const pointsForNextRect = findPlaceForNextRect(addPoint);
-    console.log("points", pointsForNextRect);
-    // determine needed size
 
     if(pointsForNextRect.length == 2) {
         const startPointOnLine = pickRandomPointOnLine(pointsForNextRect);
@@ -613,6 +606,5 @@ addRect(batch.shift()!);
 findNextConcaveArea();
 console.log(perimeterPoints);
 drawPerimeterPoints(perimeterPoints);
-//console.log(createRectangle({x:20, y:20}, batch.shift()!, CardinalCornerDirection.SOUTH_WEST));
 drawPoint({x:20, y:20}, "black", "pink", "(20,20)")
 
