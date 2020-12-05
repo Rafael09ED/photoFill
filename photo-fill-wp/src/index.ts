@@ -165,8 +165,11 @@ function addPointsToPerimeter(points: PerimeterPoint[], pointToAddAfter: Point[]
     } else if (pointToAddAfter.length == 3) {
         console.log("three");
         perimeterPoints.splice(circularIndex(index + 1, perimeterPoints.length), 1, ...points.slice(1));
+    } else if (pointToAddAfter.length == 4) {
+        console.log("four");
+        perimeterPoints.splice(circularIndex(index + 1, perimeterPoints.length), 2, ...points.slice(0, 3));
     } else 
-        console.log("other");
+        throw new Error("Invalid number of points to insert into");
 
 
     for (let i = 0; i < perimeterPoints.length; i++) {
@@ -309,20 +312,19 @@ function dirOfNextPoint(previous: Point, current: Point, next: Point) : Relative
     return RelativeDirection.Back;
 }
 
-function getOutsideDirectionOfLine(a: PerimeterPoint, b: PerimeterPoint) : CardinalDirection {
-    
-    if (a.y == b.y && !((a.internalDir.NW && b.internalDir.NE) || (b.internalDir.NW && a.internalDir.NE)))
+function getOutsideDirectionOfLine(a: Point, b: Point) : CardinalDirection {
+    if (a.y == b.y && a.x < b.x)
         return CardinalDirection.NORTH;
-    if (a.x == b.x && !((a.internalDir.NE && b.internalDir.SE) || (b.internalDir.NE && a.internalDir.SE)))
+    if (a.x == b.x && a.y < b.y)
         return CardinalDirection.EAST;
-    if(a.y == b.y && !((a.internalDir.SW && b.internalDir.SE) || (b.internalDir.SW && a.internalDir.SE)))
+    if(a.y == b.y && a.x > b.x)
         return CardinalDirection.SOUTH;
-    if(a.x == b.x && !((a.internalDir.NW && b.internalDir.SW) || (b.internalDir.NW && a.internalDir.SW)))
+    if(a.x == b.x && a.y > b.y)
         return CardinalDirection.WEST
     throw new Error("Cardinal Direction of line not found");
 }
 
-function findNextConcaveArea() : Point[] {
+function findNextConcaveArea() : PerimeterPoint[] {
     for (let i = 0; i < perimeterPoints.length; i++) {
         const a = perimeterPoints[i];
         const b_i = (i + 1) % perimeterPoints.length;
@@ -382,7 +384,7 @@ function findPlaceForNextRect(point : Point): PerimeterPoint[] {
 
     const nextConcaveArea = findNextConcaveArea();
     if (nextConcaveArea.length != 0){
-        // TODO: return
+        return nextConcaveArea;
     }
     
     // find points
@@ -430,6 +432,36 @@ function pickRandomPointOnLine(points: Point[]): Point {
     }
 }
 
+function lenghtOfLine(a: Point, b: Point) {
+    if (a.x == b.x) {
+        return Math.abs(b.y - a.y);
+    }
+    if (a.y == b.y) {
+        return Math.abs(b.x - a.x);
+    }
+    throw new Error("Line not horizontal or vertical");
+}
+
+function findScalledSize(x1: number, y1: number, x2: number) : number {
+    return x2 * y1 / x1;
+}
+
+function getSizeGivenSpace(old: Rectangle, points : Point[]) : Rectangle {
+    const dir = getOutsideDirectionOfLine(points[1], points[2]);
+    const lineLength = lenghtOfLine(points[1], points[2]);
+    switch(dir){
+        case CardinalDirection.SOUTH: 
+        case CardinalDirection.NORTH:{
+            const scaledSize = Math.round(findScalledSize(old.width, old.height, lineLength));
+            return {height: scaledSize, width: lineLength};
+        }
+        case CardinalDirection.EAST: 
+        case CardinalDirection.WEST: {
+            const scaledSize = Math.round(findScalledSize(old.height, old.width, lineLength));
+            return {height: lineLength, width: scaledSize};
+        }
+    }
+}
 
 function addRect(nextRectToAdd: Rectangle){
     const addPoint : Point = {x:Math.random()*canvas_width,y:Math.random() * canvas_height};
@@ -485,10 +517,35 @@ function addRect(nextRectToAdd: Rectangle){
             addPointsToPerimeter(rectPoints, pointsForNextRect);
             layer.add(gui_element);
         }
+    } else if (pointsForNextRect.length == 4) {
+        // todo: fit to area
+        const pointToStartAt = pointsForNextRect[1];
+        const middleWallDir = getOutsideDirectionOfLine(pointsForNextRect[1], pointsForNextRect[2]);
+        const nextRect = getSizeGivenSpace(nextRectToAdd, pointsForNextRect);
+        let gui_element : Konva.Rect | null = null;
+        let rectPoints: PerimeterPoint[] = [];
+        console.log("areas", nextRect, pointsForNextRect);
+        switch(middleWallDir){
+            case CardinalDirection.NORTH:{
+                [gui_element, rectPoints] = createRectangle(pointToStartAt, nextRect, CardinalCornerDirection.SOUTH_WEST);
+            }   break;
+            case CardinalDirection.EAST: {
+                [gui_element, rectPoints] = createRectangle(pointToStartAt, nextRect, CardinalCornerDirection.NORTH_WEST);
+            }   break;
+            case CardinalDirection.SOUTH: {
+                [gui_element, rectPoints] = createRectangle(pointToStartAt, nextRect, CardinalCornerDirection.NORTH_EAST);
+            }   break;
+            case CardinalDirection.WEST: {
+                [gui_element, rectPoints] = createRectangle(pointToStartAt, nextRect, CardinalCornerDirection.SOUTH_EAST);
+            }   break;
+        }
+        if (gui_element != null) {
+            addPointsToPerimeter(rectPoints, pointsForNextRect);
+            layer.add(gui_element);
+        }
+    } else {
+        throw new Error("Invalid amount of points from where to place new rectangle");
     }
-    // create object
-    // add to layer
-    // add points to perimeter
     
 }
 
@@ -601,6 +658,7 @@ let batch = generateRectBatchData();
 
 let first = createFirst(batch.shift()!);
 stage.add(layer);
+addRect(batch.shift()!);
 addRect(batch.shift()!);
 addRect(batch.shift()!);
 findNextConcaveArea();
