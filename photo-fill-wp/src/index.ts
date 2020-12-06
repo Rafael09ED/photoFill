@@ -469,7 +469,7 @@ function getSizeGivenSpace(old: Rectangle, points : Point[]) : Rectangle {
     
     const dir = getOutsideDirectionOfLine(points[1], points[2]);
     const lineLength = lenghtOfLine(points[1], points[2]);
-    if (true) {
+    if (true) { //TODO: this section is cheating, find better solution
         const boxHeight = Math.min(lenghtOfLine(points[0], points[1]), lenghtOfLine(points[2], points[3]));
         switch(dir){
             case CardinalDirection.SOUTH: 
