@@ -147,14 +147,30 @@ function calculateInternalDir(p : Point, prev: Point, next: Point) : SquareCorne
 }
 
 function circularIndex(index: number, length: number): number{
-    index = index % perimeterPoints.length;
-    return (index > 0) ? index : index + perimeterPoints.length;
+    index = index % length;
+    return (index > 0) ? index : index + length;
 }
-``
+
+function pointIsHorizontalOrVertical(a: Point, b:Point) : boolean {
+    return a.x == b.x || a.y == b.y;
+}
+
+function assertPointsAreHorizontalOrVerticalFromEachOther(points: Point[]) {
+    for (let i = 0; i < points.length; i++) {
+        const a = points[i];
+        const b_i = (i + 1) %  points.length;
+        const b = points[b_i];
+        if (!pointIsHorizontalOrVertical(a,b))
+            throw new Error("Assertion that point was in line faild")
+    }
+}
+
 function addPointsToPerimeter(points: PerimeterPoint[], pointToAddAfter: Point[]){
     if(perimeterPoints.length == 0 || points.length == 0)
         throw new Error("Perimeter has no points!");
 
+    assertPointsAreHorizontalOrVerticalFromEachOther(points);
+    assertPointsAreHorizontalOrVerticalFromEachOther(perimeterPoints);
 
     console.log(perimeterPoints, pointToAddAfter);
     const index = getIndexOfPoint(pointToAddAfter[0]);
@@ -181,19 +197,24 @@ function addPointsToPerimeter(points: PerimeterPoint[], pointToAddAfter: Point[]
         const d = perimeterPoints[d_i];
         
        
-        // remove overlapping points
-        if (arePointsEqual(b, c)){
-            if (!onSameLine(a, b, d)){
-                perimeterPoints.splice(b_i,1);
-                perimeterPoints[b_i].internalDir = joinSquarePoints(b.internalDir, c.internalDir);
-                i--;
-                continue;
-            }
-            perimeterPoints = spliceCircular(perimeterPoints, b_i, 2);
+        if (arePointsEqual(a, b)){
+            perimeterPoints[i].internalDir = joinSquarePoints(a.internalDir, b.internalDir);
+            perimeterPoints = spliceCircular(perimeterPoints, b_i, 1);
+            i--;
+            continue;
         } 
+
         // remove backtracking points
         if (dirOfNextPoint(a, b, c) == RelativeDirection.Back){
-            perimeterPoints.splice(b_i, 1);
+            perimeterPoints = spliceCircular(perimeterPoints, b_i, 1);
+            i--;
+            continue;
+        }
+
+        if (onSameLine(a, b, c)){
+            perimeterPoints = spliceCircular(perimeterPoints, b_i, 1);
+            i--;
+            continue;
         }
     }
     for (let i = 0; i < perimeterPoints.length; i++) {
@@ -320,6 +341,7 @@ function getOutsideDirectionOfLine(a: Point, b: Point) : CardinalDirection {
         return CardinalDirection.SOUTH;
     if(a.x == b.x && a.y > b.y)
         return CardinalDirection.WEST
+    drawPerimeterPoints(perimeterPoints);
     throw new Error("Cardinal Direction of line not found");
 }
 
@@ -379,8 +401,6 @@ function getIndexOfPoint(p: Point) : number{
 }
 
 function findPlaceForNextRect(point : Point): PerimeterPoint[] {
-    // TODO: real Algo
-
     const nextConcaveArea = findNextConcaveArea();
     if (nextConcaveArea.length != 0){
         return nextConcaveArea;
@@ -446,8 +466,21 @@ function findScalledSize(x1: number, y1: number, x2: number) : number {
 }
 
 function getSizeGivenSpace(old: Rectangle, points : Point[]) : Rectangle {
+    
     const dir = getOutsideDirectionOfLine(points[1], points[2]);
     const lineLength = lenghtOfLine(points[1], points[2]);
+    if (true) {
+        const boxHeight = Math.min(lenghtOfLine(points[0], points[1]), lenghtOfLine(points[2], points[3]));
+        switch(dir){
+            case CardinalDirection.SOUTH: 
+            case CardinalDirection.NORTH:
+                return {height: boxHeight, width: lineLength};
+            case CardinalDirection.EAST: 
+            case CardinalDirection.WEST: 
+                return {height: lineLength, width: boxHeight};
+            
+        }
+    }
     switch(dir){
         case CardinalDirection.SOUTH: 
         case CardinalDirection.NORTH:{
@@ -462,9 +495,15 @@ function getSizeGivenSpace(old: Rectangle, points : Point[]) : Rectangle {
     }
 }
 
+function getWindowCenterPoint() : Point {
+    return  {x: -stage.x() + stage.width() / 2, y: -stage.y() + stage.height() / 2};
+}
+
+
 function addRect(nextRectToAdd: Rectangle){
-    const addPoint : Point = {x:Math.random()*canvas_width,y:Math.random() * canvas_height};
+    //const addPoint : Point = {x:Math.random()*canvas_width,y:Math.random() * canvas_height};
     //const addPoint : Point = {x: canvas_width / 2, y: 100};
+    const addPoint : Point = getWindowCenterPoint();
 
     //drawPoint(addPoint, "blue", "red");
     const pointsForNextRect = findPlaceForNextRect(addPoint);
@@ -645,6 +684,33 @@ function drawPerimeterPoints(points: PerimeterPoint[]){
     layer.draw();
 }
 
+/** Get relationship between a point and a polygon using ray-casting algorithm
+ * @param {{x:number, y:number}} P: point to check
+ * @param {{x:number, y:number}[]} polygon: the polygon
+ * @returns -1: outside, 0: on edge, 1: inside
+ */
+
+function inside(point: Point, vs: Point[]) {
+    // ray-casting algorithm based on
+    // https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html/pnpoly.html
+    
+    var x = point.x, y = point.y;
+    
+    var inside = false;
+    for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        var xi = vs[i].x, yi = vs[i].y;
+        var xj = vs[j].x, yj = vs[j].y;
+        
+        var intersect = ((yi > y) != (yj > y))
+            && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    
+    return inside;
+};
+
+//  ========== START OF MAIN =========  //
+
 let layer = new Konva.Layer();
 let stage = new Konva.Stage({
   container: 'container',
@@ -654,14 +720,35 @@ let stage = new Konva.Stage({
 });
 
 let batch = generateRectBatchData();
-
-
 let first = createFirst(genRectData());
 stage.add(layer);
-for (let i = 0; i < 2000; i++) {
-    addRect(genRectData());
-}
+
 
 console.log(perimeterPoints);
-drawPerimeterPoints(perimeterPoints);
 
+function isRenderedWithBorder() : boolean {
+    const windowWithBox : Point[] = [
+        {x: -100 - stage.x(),                   y: -100 - stage.y() },
+        {x: -100 - stage.x() + canvas_width,    y: -100 - stage.y() },
+        {x:  100 - stage.x()+ canvas_width,     y:  100 - stage.y() + canvas_height},
+        {x: -100 - stage.x(),                   y:  100 - stage.y() + canvas_height}
+    ];
+    console.log()
+    for (let i = 0; i < windowWithBox.length; i++) {
+        const element = windowWithBox[i];
+        console.log(inside(element, perimeterPoints), windowWithBox);
+        if (!inside(element, perimeterPoints))
+            return false;
+    }
+    return true;
+}
+
+function updateRender() {
+    while (!isRenderedWithBorder()) {
+        addRect(genRectData());
+    };
+    layer.draw();
+    setTimeout(updateRender, 500);
+}
+
+setTimeout(updateRender, 500);
