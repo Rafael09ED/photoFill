@@ -727,11 +727,12 @@ stage.add(layer);
 console.log(perimeterPoints);
 
 function isRenderedWithBorder() : boolean {
+    const bufferZone = 100; // Could replace with speed thing
     const windowWithBox : Point[] = [
-        {x: -100 - stage.x(),                   y: -100 - stage.y() },
-        {x: -100 - stage.x() + canvas_width,    y: -100 - stage.y() },
-        {x:  100 - stage.x()+ canvas_width,     y:  100 - stage.y() + canvas_height},
-        {x: -100 - stage.x(),                   y:  100 - stage.y() + canvas_height}
+        {x: -bufferZone - stage.x(),                   y: -bufferZone - stage.y() },
+        {x: -bufferZone - stage.x() + canvas_width,    y: -bufferZone - stage.y() },
+        {x:  bufferZone - stage.x() + canvas_width,     y:  bufferZone - stage.y() + canvas_height},
+        {x: -bufferZone - stage.x(),                   y:  bufferZone - stage.y() + canvas_height}
     ];
     console.log()
     for (let i = 0; i < windowWithBox.length; i++) {
