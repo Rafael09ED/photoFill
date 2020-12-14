@@ -1,5 +1,6 @@
 # Photo Fill
 
+A program to navigate and generate an infinite canvas of photos without using a grid
 
 ## Resources
 
