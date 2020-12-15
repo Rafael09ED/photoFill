@@ -1,8 +1,5 @@
 import Konva from 'konva';
 
-const canvas_width = window.innerWidth;
-const canvas_height = window.innerHeight;
-
 interface Rectangle {
     height: number,
     width: number
@@ -44,11 +41,6 @@ enum RelativeDirection {
 interface PerimeterPoint extends Point {
     internalDir: SquareCornerDirection
 }
-
-/* 
- * perimeterPoints store PerimeterPoints clockwise around the polygon
- */
-let perimeterPoints: PerimeterPoint[] = [];
 
 
 function randColor(): string {
@@ -253,6 +245,7 @@ function createRectangle(point: Point, size: Rectangle, pointRefersTo: CardinalC
         fill: randColor(),
         stroke: 'black',
         strokeWidth: 1,
+       //opacity: .5,
     });
     layer.add(rect);
     let corners = getPointsFromRectangle(rect.x(), rect.y(), rect.width(), rect.height());
@@ -709,23 +702,6 @@ function inside(point: Point, vs: Point[]) {
     return inside;
 };
 
-//  ========== START OF MAIN =========  //
-
-let layer = new Konva.Layer();
-let stage = new Konva.Stage({
-  container: 'container',
-  width: canvas_width,
-  height: canvas_height,
-  draggable: true,
-});
-
-let batch = generateRectBatchData();
-let first = createFirst(genRectData());
-stage.add(layer);
-
-
-console.log(perimeterPoints);
-
 function isRenderedWithBorder() : boolean {
     const bufferZone = 100; // Could replace with speed thing
     const windowWithBox : Point[] = [
@@ -744,12 +720,37 @@ function isRenderedWithBorder() : boolean {
     return true;
 }
 
-function updateRender() {
-    while (!isRenderedWithBorder()) {
-        addRect(genRectData());
-    };
-    layer.draw();
+function start() {
+    layer = new Konva.Layer();
+    stage = new Konva.Stage({
+      container: 'container',
+      width: canvas_width,
+      height: canvas_height,
+      draggable: true,
+    });
+    
+    let batch = generateRectBatchData();
+    let first = createFirst(genRectData());
+    stage.add(layer);
+    
+    function updateRender() {
+        while (!isRenderedWithBorder()) {
+            addRect(genRectData());
+        };
+        layer.draw();
+        setTimeout(updateRender, 500);
+    }
+    
     setTimeout(updateRender, 500);
 }
 
-setTimeout(updateRender, 500);
+const canvas_width = window.innerWidth;
+const canvas_height = window.innerHeight;
+/* 
+ * perimeterPoints store the points clockwise around the polygon
+ */
+let perimeterPoints: PerimeterPoint[] = [];
+let layer: Konva.Layer;
+let stage : Konva.Stage;
+
+start();
