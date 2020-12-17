@@ -4,6 +4,10 @@ A program to navigate and generate an infinite canvas of photos without using a 
 
 ## Live Preview
 
+### Instructions 
+
+Click and drag to navigate
+
 ### [Rectangles Demoing Concept](https://rafaeldejesus.com/photoFill/)
 
 ![Rectangles](https://github.com/Rafael09ED/photoFill/blob/gh-pages/demo/rafaeldejesus.com_photoFill_.png?raw=true)
