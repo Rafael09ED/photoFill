@@ -12,11 +12,10 @@ Click and drag to navigate
 
 ![Rectangles](https://github.com/Rafael09ED/photoFill/blob/gh-pages/demo/rafaeldejesus.com_photoFill_.png?raw=true)
 
-### [Images Demo](https://rafaeldejesus.com/photoFill/alt) 
-  * Currently slow to load
-  * Currently streches images to fit
+### [Images Demo Stretch](https://rafaeldejesus.com/photoFill/alt) 
+### [Images Demo Scale](https://rafaeldejesus.com/photoFill/alt2/index.html) 
 
-![Images](https://github.com/Rafael09ED/photoFill/blob/gh-pages/demo/rafaeldejesus.com_photoFill_alt_.png?raw=true)
+![Images](https://github.com/Rafael09ED/photoFill/blob/gh-pages/demo/rafaeldejesus.com_photoFill_alt2.png?raw=true)
 
 ## How it works
 
