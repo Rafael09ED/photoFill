@@ -63,13 +63,13 @@ let photoCount = 0;
 
 function genRectData(): URLPhoto {
     const val = values[photoCount++ % values.length];
-    let scaleDown = 7;
+    let scaleDown = 9;
     let minSize = 200;
     let maxSize = Math.min(canvas_height, canvas_width);
     return {
         height: Math.floor(val.height/scaleDown),
         width: Math.floor(val.width/scaleDown),
-        url: val.download_url
+        url: `https://picsum.photos/id/${val.id}/${Math.floor(val.width/scaleDown)}/${Math.floor(val.height/scaleDown)}`
     }
 }
 
@@ -756,7 +756,7 @@ fetch("https://picsum.photos/v2/list?page=1&limit=100")
     .then(json => {
         values = json;
 
-        
+        console.log(values);
         createFirst(genRectData());
         stage.add(layer);
 
